@@ -12,9 +12,8 @@ const io = require("socket.io")(server, {
 
 io.on("connection", (socket) => {
 	socket.emit("me", socket.id)
-	console.log(socket.id.length)
+	// console.log(socket.id.length)
 	socket.on("disconnect", () => {
-		console.log("callEnded")
 		socket.broadcast.emit("callEnded")
 	})
 
@@ -24,6 +23,9 @@ io.on("connection", (socket) => {
 
 	socket.on("answerCall", (data) => {
 		io.to(data.to).emit("callAccepted", {signal : data.signal,name : data.name})
+	})
+	socket.on("endCall",(data)=>{
+		io.to(data.to).emit("endCall")
 	})
 })
 

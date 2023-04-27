@@ -13,7 +13,7 @@ import io from "socket.io-client"
 import "./App.css"
 import WebCamAccess from './webcam_access_required.png'
 
-const socketAddress = 'http://192.168.1.6:5000/';
+const socketAddress = 'http://192.168.43.44:5000';
 const socket = io.connect(socketAddress)
 function App() {
 	const [ me, setMe ] = useState("")       					// my socket id
@@ -34,7 +34,7 @@ function App() {
 	useEffect(() => {
 		navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((stream) => {
 			setStream(stream)
-				myVideo.current.srcObject = stream
+			myVideo.current.srcObject = stream
 		})
 
 		socket.on("me", (id) => {
@@ -47,9 +47,18 @@ function App() {
 			setUserName(data.name)
 			setCallerSignal(data.signal)
 		})
+		socket.on("endCall",()=>{
+			setIsEdit(false)
+			setReceivingCall(false)
+			setCallAccepted(false)
+			setCallEnded(true)
+			setUserName("")
+			window.location.reload()
+		})
 	}, [])
-
 	const callUser = (id) => {
+		setCallEnded(false)
+		userVideo.current = undefined
 		const peer = new Peer({
 			initiator: true,
 			trickle: false,
@@ -68,6 +77,7 @@ function App() {
 		})
 		socket.on("callAccepted", (data) => {
 			setCallAccepted(true)
+			setCaller(idToCall)
 			setUserName(data.name)
 			peer.signal(data.signal)
 		})
@@ -78,6 +88,7 @@ function App() {
 	const answerCall =() =>  {
 		setCallAccepted(true)
 		setReceivingCall(false)
+		userVideo.current = undefined
 		const peer = new Peer({
 			initiator: false,
 			trickle: false,
@@ -102,11 +113,16 @@ function App() {
 		}
 	},[receivingCall])
 	const leaveCall = () => {
-		setCallEnded(true)
 		setIsEdit(false)
 		setReceivingCall(false)
-		console.log("hi")
-		connectionRef.current.destroy()
+		setCallAccepted(false)
+		setCallEnded(true)
+		setUserName("")
+		connectionRef.current.destroy()	
+		socket.emit("endCall",{to : caller})
+		window.location.reload()
+		
+		
 	}
 	const keyDownHandler = e =>{
 		if(e.key === 'Enter'){
@@ -114,7 +130,6 @@ function App() {
 			setIsEdit(true)
 		}
 	}
-	//
 	return (
 		<>
 				{
@@ -133,7 +148,7 @@ function App() {
 		}
 		<div className={mainClass}>
 
-		<h1 style={{ textAlign: "center", color: '#fff' }}>Video Calling App</h1>
+		<h1 style={{ textAlign: "center", color: '#fff' }}>Video Chat</h1>
 		<div className="container">
 			<div className="video-container">
 				<div className="video">
@@ -144,7 +159,7 @@ function App() {
 					</Card>
 					
 				</div>
-				<div className="video">
+				<div className="video">	
 						<Card  className="video-styles">
 							<CardHeader title={callAccepted && !callEnded ? userName || "Anonymous" : null}/>
 								{ callAccepted && !callEnded ? 
